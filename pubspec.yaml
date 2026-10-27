@@ -1,0 +1,23 @@
+name: baccarat_zenith
+description: "OmniMaster Apex V18 - Baccarat Decision Support Tool"
+publish_to: 'none'
+version: 1.8.0+18
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.1
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  csv: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
