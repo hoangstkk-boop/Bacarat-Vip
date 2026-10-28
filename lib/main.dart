@@ -587,7 +587,7 @@ class ZenithMainScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // MA TRẬN BEAD PLATE
+            // MA TRẬN BEAD PLATE (HỖ TRỢ CUỘN NGANG LÊN TỚI 100+ VÁN)
             MasterBeadPlateGrid(activeHands: activeHands),
             const SizedBox(height: 6),
 
@@ -639,13 +639,43 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-class MasterBeadPlateGrid extends StatelessWidget {
+// Widget Lưới Lịch Sử Hỗ Trợ Cuộn Ngang Tự Động (100+ Ván)
+class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
 
   @override
+  State<MasterBeadPlateGrid> createState() => _MasterBeadPlateGridState();
+}
+
+class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void didUpdateWidget(covariant MasterBeadPlateGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.activeHands.length != oldWidget.activeHands.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (activeHands.isEmpty) {
+    if (widget.activeHands.isEmpty) {
       return Container(height: 100, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
     }
     return Container(
@@ -653,11 +683,16 @@ class MasterBeadPlateGrid extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
       child: GridView.builder(
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6, mainAxisSpacing: 4, crossAxisSpacing: 4),
-        itemCount: activeHands.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6, 
+          mainAxisSpacing: 4, 
+          crossAxisSpacing: 4,
+        ),
+        itemCount: widget.activeHands.length,
         itemBuilder: (context, idx) {
-          final h = activeHands[idx];
+          final h = widget.activeHands[idx];
           return Container(
             decoration: BoxDecoration(color: h.result.color, shape: BoxShape.circle),
             child: Center(child: Text(h.result.symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
