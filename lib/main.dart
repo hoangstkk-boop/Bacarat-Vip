@@ -392,11 +392,11 @@ class ZenithMainViewModel extends ChangeNotifier {
       tiltWarningActive = false;
     }
 
-    if (currentUnits <= -stopLossUnits) detoxModeActive = true;
+    // Đã gỡ bỏ khóa cứng detoxModeActive để không bị chặn nhập liệu khi lỗ/lãi
   }
 
   Future<void> recordHand(BaccaratResultCode res, String userBet) async {
-    if (pauseActive || detoxModeActive || currentUnits >= takeProfitUnits) return;
+    if (pauseActive) return; // Chỉ chặn khi tạm dừng, thoải mái nhập 100+ ván không bao giờ bị khóa
 
     HapticFeedback.mediumImpact();
     final shoe = currentShoe;
@@ -637,7 +637,7 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử Tối Ưu Kép: Thu Nhỏ Gọn Gàng + Cuộn Ngang Vô Tận (100+ Ván)
+// Widget Lưới Lịch Sử Cột Bảng Châu Chuẩn 6 Hàng, Cuộn Ngang Vô Tận Mượt Mà Tuyệt Đối
 class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -675,58 +675,68 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
   Widget build(BuildContext context) {
     if (widget.activeHands.isEmpty) {
       return Container(
-        height: 130, 
+        height: 140, 
         alignment: Alignment.center, 
         decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[350]!), borderRadius: BorderRadius.circular(8)),
         child: const Text("Chưa có ván bài nào", style: TextStyle(color: Colors.grey, fontSize: 13)),
       );
     }
 
-    // Tính toán độ rộng động dựa trên tổng số cột (6 hàng/cột) để cuộn mượt mà
-    int totalColumns = (widget.activeHands.length / 6).ceil();
-    double screenWidth = MediaQuery.of(context).size.width - 32;
-    double contentWidth = max(screenWidth, totalColumns * 24.0);
+    // Chia danh sách ván bài thành các cột (mỗi cột tối đa 6 hàng chuẩn Baccarat)
+    List<List<BaccaratHand>> columns = [];
+    for (int i = 0; i < widget.activeHands.length; i += 6) {
+      int end = (i + 6 < widget.activeHands.length) ? i + 6 : widget.activeHands.length;
+      columns.add(widget.activeHands.sublist(i, end));
+    }
 
     return Container(
-      height: 135,
-      padding: const EdgeInsets.all(4),
+      height: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white, 
         border: Border.all(color: Colors.grey[350]!), 
         borderRadius: BorderRadius.circular(8),
       ),
-      child: SingleChildScrollView(
+      child: ListView.builder(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: contentWidth,
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            scrollDirection: Axis.horizontal,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 6, // Chuẩn 6 hàng Bảng Châu truyền thống
-              mainAxisSpacing: 2,
-              crossAxisSpacing: 2,
+        itemCount: columns.length,
+        itemBuilder: (context, colIndex) {
+          final colHands = columns[colIndex];
+          return Container(
+            width: 22,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(6, (rowIndex) {
+                if (rowIndex < colHands.length) {
+                  final h = colHands[rowIndex];
+                  return Container(
+                    width: 19,
+                    height: 19,
+                    margin: const EdgeInsets.symmetric(vertical: 1),
+                    decoration: BoxDecoration(
+                      color: h.result.color, 
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        h.result.symbol, 
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
+                      ),
+                    ),
+                  );
+                } else {
+                  return Container(
+                    width: 19,
+                    height: 19,
+                    margin: const EdgeInsets.symmetric(vertical: 1),
+                  );
+                }
+              }),
             ),
-            itemCount: widget.activeHands.length,
-            itemBuilder: (context, idx) {
-              final h = widget.activeHands[idx];
-              return Container(
-                decoration: BoxDecoration(
-                  color: h.result.color, 
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    h.result.symbol, 
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -783,6 +793,7 @@ class ZenithApp extends StatelessWidget {
   const ZenithApp({super.key});
   @override
   Widget build(BuildContext context) {
+    print("Initializing ZenithApp...");
     return ChangeNotifierProvider(
       create: (_) => ZenithMainViewModel()..loadApp(),
       child: MaterialApp(
