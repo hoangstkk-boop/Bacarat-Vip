@@ -485,7 +485,7 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V18 (GIỮ NGUYÊN BỐ CỤC CŨ, MỞ RỘNG KHUNG LỊCH SỬ) ---
+// --- GIAO DIỆN CHÍNH APEX V18 (GIỮ NGUYÊN GIAO DIỆN CŨ, MỞ RỘNG TRƯỢT NGANG 100+ VÁN) ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -585,7 +585,7 @@ class ZenithMainScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // KHUNG MA TRẬN ĐÃ ĐƯỢC MỞ RỘNG (HIỂN THỊ TRỌN VẸN 100+ VÁN, TRƯỢT NGANG MƯỢT MÀ)
+            // KHUNG MA TRẬN TRUYỀN THỐNG 3 HÀNG, CUỘN NGANG THẢ GA 100+ VÁN
             MasterBeadPlateGrid(activeHands: activeHands),
             const SizedBox(height: 6),
 
@@ -637,7 +637,7 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử Định Dạng Dọc/Ngang Đa Hàng Mở Rộng Hỗ Trợ 100+ Ván
+// Widget Lưới Lịch Sử 3 Hàng Chuẩn Xác, Cuộn Ngang 100+ Ván Mượt Mà
 class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -687,11 +687,11 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
       child: GridView.builder(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        gridDelegate: const SliverGridDelegateTask(
-          crossAxisCount: 3, // Giữ bố cục 3 hàng truyền thống, mở rộng vô tận chiều ngang
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, // Giữ nguyên 3 hàng chuẩn giao diện cũ
           mainAxisSpacing: 6,
           crossAxisSpacing: 6,
-        ) as SliverGridDelegate,
+        ),
         itemCount: widget.activeHands.length,
         itemBuilder: (context, idx) {
           final h = widget.activeHands[idx];
