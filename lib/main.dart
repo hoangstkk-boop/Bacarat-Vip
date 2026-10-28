@@ -587,7 +587,7 @@ class ZenithMainScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // MA TRẬN BEAD PLATE (HỖ TRỢ CUỘN NGANG LÊN TỚI 100+ VÁN)
+            // MA TRẬN BEAD PLATE (CUỘN NGANG THẲNG MƯỢT MÀ)
             MasterBeadPlateGrid(activeHands: activeHands),
             const SizedBox(height: 6),
 
@@ -639,7 +639,7 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử Hỗ Trợ Cuộn Ngang Tự Động (100+ Ván)
+// Widget Lưới Lịch Sử Cuộn Ngang Thoải Mái 100+ Ván
 class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -676,26 +676,36 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
   @override
   Widget build(BuildContext context) {
     if (widget.activeHands.isEmpty) {
-      return Container(height: 100, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
+      return Container(height: 90, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
     }
     return Container(
-      height: 110,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-      child: GridView.builder(
+      height: 90,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        border: Border.all(color: Colors.grey[350]!), 
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListView.builder(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 6, 
-          mainAxisSpacing: 4, 
-          crossAxisSpacing: 4,
-        ),
         itemCount: widget.activeHands.length,
         itemBuilder: (context, idx) {
           final h = widget.activeHands[idx];
           return Container(
-            decoration: BoxDecoration(color: h.result.color, shape: BoxShape.circle),
-            child: Center(child: Text(h.result.symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+            width: 36,
+            height: 36,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: h.result.color, 
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                h.result.symbol, 
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
           );
         },
       ),
