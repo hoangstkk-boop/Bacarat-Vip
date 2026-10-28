@@ -485,7 +485,7 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V18 (GIỮ NGUYÊN GIAO DIỆN CŨ, MỞ RỘNG TRƯỢT NGANG 100+ VÁN) ---
+// --- GIAO DIỆN CHÍNH APEX V18 ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -585,7 +585,7 @@ class ZenithMainScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // KHUNG MA TRẬN TRUYỀN THỐNG 3 HÀNG, CUỘN NGANG THẢ GA 100+ VÁN
+            // KHUNG MA TRẬN 6 HÀNG THU NHỎ GỌN + CUỘN NGANG VÔ TẬN 100+ VÁN
             MasterBeadPlateGrid(activeHands: activeHands),
             const SizedBox(height: 6),
 
@@ -637,7 +637,7 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử 3 Hàng Chuẩn Xác, Cuộn Ngang 100+ Ván Mượt Mà
+// Widget Lưới Lịch Sử Tối Ưu Kép: Thu Nhỏ Gọn Gàng + Cuộn Ngang Vô Tận (100+ Ván)
 class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -674,42 +674,59 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
   @override
   Widget build(BuildContext context) {
     if (widget.activeHands.isEmpty) {
-      return Container(height: 110, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
+      return Container(
+        height: 130, 
+        alignment: Alignment.center, 
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[350]!), borderRadius: BorderRadius.circular(8)),
+        child: const Text("Chưa có ván bài nào", style: TextStyle(color: Colors.grey, fontSize: 13)),
+      );
     }
+
+    // Tính toán độ rộng động dựa trên tổng số cột (6 hàng/cột) để cuộn mượt mà
+    int totalColumns = (widget.activeHands.length / 6).ceil();
+    double screenWidth = MediaQuery.of(context).size.width - 32;
+    double contentWidth = max(screenWidth, totalColumns * 24.0);
+
     return Container(
-      height: 125,
-      padding: const EdgeInsets.all(6),
+      height: 135,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white, 
         border: Border.all(color: Colors.grey[350]!), 
         borderRadius: BorderRadius.circular(8),
       ),
-      child: GridView.builder(
+      child: SingleChildScrollView(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, // Giữ nguyên 3 hàng chuẩn giao diện cũ
-          mainAxisSpacing: 6,
-          crossAxisSpacing: 6,
+        child: SizedBox(
+          width: contentWidth,
+          child: GridView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            scrollDirection: Axis.horizontal,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 6, // Chuẩn 6 hàng Bảng Châu truyền thống
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
+            ),
+            itemCount: widget.activeHands.length,
+            itemBuilder: (context, idx) {
+              final h = widget.activeHands[idx];
+              return Container(
+                decoration: BoxDecoration(
+                  color: h.result.color, 
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    h.result.symbol, 
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-        itemCount: widget.activeHands.length,
-        itemBuilder: (context, idx) {
-          final h = widget.activeHands[idx];
-          return Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: h.result.color, 
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                h.result.symbol, 
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
