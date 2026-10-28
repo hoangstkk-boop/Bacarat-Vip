@@ -95,6 +95,7 @@ class BaccaratHand {
       );
 }
 
+// CHUẨN HÓA MÀU SẮC: BANKER = ĐỎ, PLAYER = XANH DƯƠNG
 extension BaccaratResultCodeExt on BaccaratResultCode {
   String get symbol => switch (this) {
         BaccaratResultCode.banker => "B",
@@ -107,8 +108,8 @@ extension BaccaratResultCodeExt on BaccaratResultCode {
         BaccaratResultCode.tie => "Tie",
       };
   Color get color => switch (this) {
-        BaccaratResultCode.banker => Colors.blue,
-        BaccaratResultCode.player => Colors.red,
+        BaccaratResultCode.banker => Colors.red,   // Banker chuẩn màu Đỏ
+        BaccaratResultCode.player => Colors.blue,  // Player chuẩn màu Xanh
         BaccaratResultCode.tie => Colors.amber,
       };
 }
@@ -391,12 +392,10 @@ class ZenithMainViewModel extends ChangeNotifier {
     } else {
       tiltWarningActive = false;
     }
-
-    // Đã gỡ bỏ khóa cứng detoxModeActive để không bị chặn nhập liệu khi lỗ/lãi
   }
 
   Future<void> recordHand(BaccaratResultCode res, String userBet) async {
-    if (pauseActive) return; // Chỉ chặn khi tạm dừng, thoải mái nhập 100+ ván không bao giờ bị khóa
+    if (pauseActive) return;
 
     HapticFeedback.mediumImpact();
     final shoe = currentShoe;
@@ -560,7 +559,7 @@ class ZenithMainScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)), // Nút Banker màu Đỏ chuẩn
                     onPressed: () => vm.recordHand(BaccaratResultCode.banker, "B"),
                     child: Text("B (${vm.selectedStake}U)", style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -568,7 +567,7 @@ class ZenithMainScreen extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)), // Nút Player màu Xanh chuẩn
                     onPressed: () => vm.recordHand(BaccaratResultCode.player, "P"),
                     child: Text("P (${vm.selectedStake}U)", style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
@@ -682,7 +681,6 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
       );
     }
 
-    // Chia danh sách ván bài thành các cột (mỗi cột tối đa 6 hàng chuẩn Baccarat)
     List<List<BaccaratHand>> columns = [];
     for (int i = 0; i < widget.activeHands.length; i += 6) {
       int end = (i + 6 < widget.activeHands.length) ? i + 6 : widget.activeHands.length;
@@ -793,7 +791,6 @@ class ZenithApp extends StatelessWidget {
   const ZenithApp({super.key});
   @override
   Widget build(BuildContext context) {
-    print("Initializing ZenithApp...");
     return ChangeNotifierProvider(
       create: (_) => ZenithMainViewModel()..loadApp(),
       child: MaterialApp(
