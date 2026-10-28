@@ -183,7 +183,6 @@ class ZenithMarkovAnalyticsService {
       if (tempLen > maxLen) maxLen = tempLen;
     }
 
-    // ĐO LƯỜNG ENTROPY & SHI
     double volatility = total > 1 ? changes / (total - 1) : 0.0;
     double entropy = - (bCount > 0 ? (bCount / total) * log(bCount / total) : 0) - (pCount > 0 ? (pCount / total) * log(pCount / total) : 0);
     int shi = ((1.0 - (volatility * 0.7 + (entropy / 0.693) * 0.3)) * 100).clamp(10, 100).toInt();
@@ -198,7 +197,6 @@ class ZenithMarkovAnalyticsService {
       shiStatus = "Biên độ đan xen";
     }
 
-    // MA TRẬN PHÂN TÍCH XÍCH MARKOV (MARKOV CHAIN PROBABILITY)
     String markovSuggest = "Xung đột -> Đánh 1U";
     int markovConfidence = 50;
     int adaptiveUnits = 1;
@@ -487,7 +485,7 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V18 ---
+// --- GIAO DIỆN CHÍNH APEX V18 (GIỮ NGUYÊN BỐ CỤC CŨ, MỞ RỘNG KHUNG LỊCH SỬ) ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -587,7 +585,7 @@ class ZenithMainScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // MA TRẬN BEAD PLATE (CUỘN NGANG THẲNG MƯỢT MÀ)
+            // KHUNG MA TRẬN ĐÃ ĐƯỢC MỞ RỘNG (HIỂN THỊ TRỌN VẸN 100+ VÁN, TRƯỢT NGANG MƯỢT MÀ)
             MasterBeadPlateGrid(activeHands: activeHands),
             const SizedBox(height: 6),
 
@@ -639,7 +637,7 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử Cuộn Ngang Thoải Mái 100+ Ván
+// Widget Lưới Lịch Sử Định Dạng Dọc/Ngang Đa Hàng Mở Rộng Hỗ Trợ 100+ Ván
 class MasterBeadPlateGrid extends StatefulWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -676,26 +674,30 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
   @override
   Widget build(BuildContext context) {
     if (widget.activeHands.isEmpty) {
-      return Container(height: 90, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
+      return Container(height: 110, alignment: Alignment.center, child: const Text("Chưa có ván bài nào"));
     }
     return Container(
-      height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      height: 125,
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.white, 
         border: Border.all(color: Colors.grey[350]!), 
         borderRadius: BorderRadius.circular(8),
       ),
-      child: ListView.builder(
+      child: GridView.builder(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
+        gridDelegate: const SliverGridDelegateTask(
+          crossAxisCount: 3, // Giữ bố cục 3 hàng truyền thống, mở rộng vô tận chiều ngang
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+        ) as SliverGridDelegate,
         itemCount: widget.activeHands.length,
         itemBuilder: (context, idx) {
           final h = widget.activeHands[idx];
           return Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: h.result.color, 
               shape: BoxShape.circle,
@@ -703,7 +705,7 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
             child: Center(
               child: Text(
                 h.result.symbol, 
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
               ),
             ),
           );
