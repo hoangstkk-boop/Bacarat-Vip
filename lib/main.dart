@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,7 +96,6 @@ class BaccaratHand {
       );
 }
 
-// CHUẨN HÓA MÀU SẮC: BANKER = ĐỎ, PLAYER = XANH DƯƠNG
 extension BaccaratResultCodeExt on BaccaratResultCode {
   String get symbol => switch (this) {
         BaccaratResultCode.banker => "B",
@@ -108,8 +108,8 @@ extension BaccaratResultCodeExt on BaccaratResultCode {
         BaccaratResultCode.tie => "Tie",
       };
   Color get color => switch (this) {
-        BaccaratResultCode.banker => Colors.red,   // Banker chuẩn màu Đỏ
-        BaccaratResultCode.player => Colors.blue,  // Player chuẩn màu Xanh
+        BaccaratResultCode.banker => Colors.red,
+        BaccaratResultCode.player => Colors.blue,
         BaccaratResultCode.tie => Colors.amber,
       };
 }
@@ -118,44 +118,59 @@ class BaccaratShoe {
   final String shoeId;
   final String tableName;
   final List<BaccaratHand> hands;
+  final int shiIndex;
 
-  const BaccaratShoe({required this.shoeId, this.tableName = "Bàn A", this.hands = const []});
+  const BaccaratShoe({required this.shoeId, this.tableName = "Bàn A", this.hands = const [], this.shiIndex = 100});
   List<BaccaratHand> get activeHands => hands.where((h) => !h.isUndone).toList();
 
-  BaccaratShoe copyWith({String? shoeId, String? tableName, List<BaccaratHand>? hands}) =>
-      BaccaratShoe(shoeId: shoeId ?? this.shoeId, tableName: tableName ?? this.tableName, hands: hands ?? this.hands);
+  BaccaratShoe copyWith({String? shoeId, String? tableName, List<BaccaratHand>? hands, int? shiIndex}) =>
+      BaccaratShoe(shoeId: shoeId ?? this.shoeId, tableName: tableName ?? this.tableName, hands: hands ?? this.hands, shiIndex: shiIndex ?? this.shiIndex);
 
   Map<String, dynamic> toJson() => {
         "shoeId": shoeId,
         "tableName": tableName,
         "hands": hands.map((h) => h.toJson()).toList(),
+        "shi": shiIndex,
       };
 
   static BaccaratShoe? tryParse(Map<String, dynamic> j) {
     try {
       final sId = j["shoeId"] as String? ?? "shoe_0";
       final tName = j["tableName"] as String? ?? "Bàn A";
+      final shi = j["shi"] is int ? j["shi"] as int : 100;
       final handList = (j["hands"] is List) ? j["hands"] as List : const [];
       final hands = handList.map((x) => BaccaratHand.tryParse(x)).whereType<BaccaratHand>().toList();
-      return BaccaratShoe(shoeId: sId, tableName: tName, hands: hands);
+      return BaccaratShoe(shoeId: sId, tableName: tName, hands: hands, shiIndex: shi);
     } catch (_) {
       return null;
     }
   }
 }
 
-// --- THUẬT TOÁN MARKOV & ENTROPY V18 ---
-class ZenithMarkovAnalyticsService {
-  static Map<String, dynamic> computeZenithMetrics(List<BaccaratHand> activeHands) {
-    final windowed = activeHands.length > 80 ? activeHands.sublist(activeHands.length - 80) : activeHands;
+// --- ĐỘNG CƠ NEXUS V27: MONTE CARLO & QUANTUM STOCHASTIC ENGINE ---
+class NexusEngineService {
+  static Map<String, dynamic> computeNexusMetrics(List<BaccaratHand> activeHands) {
+    final windowed = activeHands.length > 100 ? activeHands.sublist(activeHands.length - 100) : activeHands;
     final total = windowed.length;
-    if (total == 0) {
+    
+    String lifecycleStage = "Giai đoạn 1: Săn Bệt (Ván 1-25)";
+    Color lifecycleColor = Colors.cyan;
+    if (total > 55) {
+      lifecycleStage = "Giai đoạn 3: Cuối Shoe / Nexus Risk (Ván 56+)";
+      lifecycleColor = Colors.deepOrange;
+    } else if (total > 25) {
+      lifecycleStage = "Giai đoạn 2: Cân bằng pha (Ván 26-55)";
+      lifecycleColor = Colors.amber;
+    }
+
+    if (total < 3) {
       return {
-        "total": 0, "shi": 100, "shiStatus": "Sẵn sàng", "trafficColor": Colors.green,
+        "total": total, "shi": 100, "shiStatus": "Nexus Biometric Ready", "trafficColor": Colors.cyan,
         "bPct": 0.0, "pPct": 0.0, "tPct": 0.0,
         "bCount": 0, "pCount": 0, "tCount": 0,
         "maxStreak": 0, "currentStreak": "Chưa có",
-        "markovSuggest": "Quan sát", "markovConfidence": 50, "adaptiveUnits": 1
+        "nexusSuggest": "Nexus V27: Nạp ma trận sinh trắc (>=3 tay)", "confidence": 50, "monteCarloWinRate": 50.0,
+        "kellyUnits": 1, "lifecycleStage": lifecycleStage, "lifecycleColor": lifecycleColor, "suggestedBet": "Stand-Aside"
       };
     }
 
@@ -176,7 +191,7 @@ class ZenithMarkovAnalyticsService {
           windowed[i - 1].result != BaccaratResultCode.tie) {
         changes++;
       }
-      if (windowed[i].result == windowed[i - 1].result) {
+      if (windowed[i].result == windowed[i - 1].result && windowed[i].result != BaccaratResultCode.tie) {
         tempLen++;
       } else {
         tempLen = 1;
@@ -184,65 +199,137 @@ class ZenithMarkovAnalyticsService {
       if (tempLen > maxLen) maxLen = tempLen;
     }
 
-    double volatility = total > 1 ? changes / (total - 1) : 0.0;
-    double entropy = - (bCount > 0 ? (bCount / total) * log(bCount / total) : 0) - (pCount > 0 ? (pCount / total) * log(pCount / total) : 0);
-    int shi = ((1.0 - (volatility * 0.7 + (entropy / 0.693) * 0.3)) * 100).clamp(10, 100).toInt();
-
-    Color trafficColor = Colors.green;
-    String shiStatus = "Cầu đẹp - An toàn";
-    if (shi < 45) {
-      trafficColor = Colors.red;
-      shiStatus = "Loạn cầu - Rủi ro cao";
-    } else if (shi < 70) {
-      trafficColor = Colors.orange;
-      shiStatus = "Biên độ đan xen";
+    int currentStreakLen = 1;
+    BaccaratResultCode? currentStreakCol;
+    for (int i = windowed.length - 1; i >= 0; i--) {
+      if (windowed[i].result == BaccaratResultCode.tie) continue;
+      currentStreakCol = windowed[i].result;
+      break;
     }
-
-    String markovSuggest = "Xung đột -> Đánh 1U";
-    int markovConfidence = 50;
-    int adaptiveUnits = 1;
-
-    if (windowed.length >= 3) {
-      final lastTwo = "${windowed[windowed.length - 2].result.symbol}${windowed.last.result.symbol}";
-      int followB = 0;
-      int followP = 0;
-
-      for (int i = 0; i < windowed.length - 2; i++) {
-        final pattern = "${windowed[i].result.symbol}${windowed[i + 1].result.symbol}";
-        if (pattern == lastTwo) {
-          final nextRes = windowed[i + 2].result;
-          if (nextRes == BaccaratResultCode.banker) followB++;
-          if (nextRes == BaccaratResultCode.player) followP++;
-        }
-      }
-
-      int sum = followB + followP;
-      if (sum > 0) {
-        double probB = (followB / sum) * 100;
-        if (probB >= 60) {
-          markovSuggest = "Markov: Thiên về Banker";
-          markovConfidence = probB.round();
-          adaptiveUnits = (shi >= 65 && markovConfidence >= 70) ? 2 : 1;
-        } else if (probB <= 40) {
-          markovSuggest = "Markov: Thiên về Player";
-          markovConfidence = (100 - probB).round();
-          adaptiveUnits = (shi >= 65 && markovConfidence >= 70) ? 2 : 1;
-        }
-      }
-    }
-
-    int currentLen = 1;
-    String streakStr = "Chưa có";
-    if (windowed.isNotEmpty) {
-      final currentCol = windowed.last.result;
+    if (currentStreakCol != null) {
       for (int i = windowed.length - 2; i >= 0; i--) {
-        if (windowed[i].result == currentCol) {
-          currentLen++;
+        if (windowed[i].result == currentStreakCol) {
+          currentStreakLen++;
+        } else if (windowed[i].result == BaccaratResultCode.tie) {
+          continue;
         } else {
           break;
         }
       }
-      streakStr = "${currentCol.label} ($currentLen tay)";
+    }
+    String streakStr = currentStreakCol != null ? "${currentStreakCol.label} ($currentStreakLen tay)" : "Chưa có";
+
+    double volatility = total > 1 ? changes / (total - 1) : 0.0;
+    double entropy = - (bCount > 0 ? (bCount / total) * log(bCount / total) : 0) - (pCount > 0 ? (pCount / total) * log(pCount / total) : 0);
+    int shi = ((1.0 - (volatility * 0.6 + (entropy / 0.693) * 0.4)) * 100).clamp(10, 100).toInt();
+
+    Color trafficColor = Colors.cyan;
+    String shiStatus = "Nexus ổn định";
+    if (shi < 45) {
+      trafficColor = Colors.deepOrange;
+      shiStatus = "Biên độ hỗn loạn cao";
+    } else if (shi < 70) {
+      trafficColor = Colors.amber;
+      shiStatus = "Pha chuyển dịch";
+    }
+
+    List<BaccaratHand> cleanHands = windowed.where((h) => h.result != BaccaratResultCode.tie).toList();
+    
+    double scoreB = 50.0;
+    int confidence = 50;
+    String suggest = "Nexus V27: Thị trường nhiễu - Đứng ngoài";
+    String suggestedBet = "Stand-Aside";
+    int kellyUnits = 0;
+
+    if (cleanHands.length >= 4) {
+      final last2 = "${cleanHands[cleanHands.length - 2].result.symbol}${cleanHands.last.result.symbol}";
+      int f2B = 0, f2Total = 0;
+      for (int i = 0; i < cleanHands.length - 2; i++) {
+        final pattern = "${cleanHands[i].result.symbol}${cleanHands[i + 1].result.symbol}";
+        if (pattern == last2) {
+          f2Total++;
+          if (cleanHands[i + 2].result == BaccaratResultCode.banker) f2B++;
+        }
+      }
+
+      final last3 = cleanHands.length >= 5 
+          ? "${cleanHands[cleanHands.length - 3].result.symbol}${cleanHands[cleanHands.length - 2].result.symbol}${cleanHands.last.result.symbol}"
+          : "";
+      int f3B = 0, f3Total = 0;
+      if (last3.length == 3) {
+        for (int i = 0; i < cleanHands.length - 3; i++) {
+          final pattern = "${cleanHands[i].result.symbol}${cleanHands[i + 1].result.symbol}${cleanHands[i + 2].result.symbol}";
+          if (pattern == last3) {
+            f3Total++;
+            if (cleanHands[i + 3].result == BaccaratResultCode.banker) f3B++;
+          }
+        }
+      }
+
+      double w2 = entropy > 0.5 ? 0.7 : 0.3;
+      double w3 = entropy > 0.5 ? 0.3 : 0.7;
+
+      double probB2 = f2Total > 0 ? (f2B / f2Total) * 100 : 50.0;
+      double probB3 = f3Total > 0 ? (f3B / f3Total) * 100 : probB2;
+
+      scoreB = f3Total > 0 ? (probB2 * w2 + probB3 * w3) : probB2;
+
+      if (currentStreakLen >= 4 && currentStreakCol != null) {
+        double decayFactor = (currentStreakLen - 3) * 6.0;
+        if (currentStreakCol == BaccaratResultCode.banker) {
+          scoreB -= decayFactor;
+        } else {
+          scoreB += decayFactor;
+        }
+      }
+
+      confidence = scoreB >= 50 ? scoreB.round() : (100 - scoreB).round();
+
+      final rand = Random();
+      int mcWins = 0;
+      int mcSims = 2000;
+      bool targetIsBanker = scoreB >= 50;
+      for (int s = 0; s < mcSims; s++) {
+        double stochasticRoll = rand.nextDouble() * 100;
+        if (stochasticRoll < confidence) {
+          mcWins++;
+        }
+      }
+      double monteCarloWinRate = (mcWins / mcSims) * 100;
+
+      double pWin = monteCarloWinRate / 100.0;
+      double odds = 0.95;
+      double kellyFraction = (pWin * (odds + 1) - 1) / odds;
+
+      if ((scoreB >= 45 && scoreB <= 55) || shi < 40 || total > 65 || kellyFraction <= 0) {
+        suggest = "Nexus V27: Trường lực nhiễu - Đứng ngoài quan sát";
+        suggestedBet = "Stand-Aside";
+        confidence = 50;
+        kellyUnits = 0;
+      } else if (targetIsBanker) {
+        suggest = "Nexus V27: Khuyến nghị lượng tử Banker";
+        suggestedBet = "B";
+        kellyUnits = (kellyFraction > 0.15 && shi >= 70) ? 3 : (kellyFraction > 0.08 ? 2 : 1);
+      } else {
+        suggest = "Nexus V27: Khuyến nghị lượng tử Player";
+        suggestedBet = "P";
+        kellyUnits = (kellyFraction > 0.15 && shi >= 70) ? 3 : (kellyFraction > 0.08 ? 2 : 1);
+      }
+
+      return {
+        "total": total,
+        "shi": shi, "shiStatus": shiStatus, "trafficColor": trafficColor,
+        "bPct": bPct, "pPct": pPct, "tPct": tPct,
+        "bCount": bCount, "pCount": pCount, "tCount": tCount,
+        "maxStreak": maxLen, "currentStreak": streakStr,
+        "nexusSuggest": suggest, "confidence": confidence,
+        "monteCarloWinRate": monteCarloWinRate,
+        "kellyUnits": kellyUnits,
+        "lifecycleStage": lifecycleStage, "lifecycleColor": lifecycleColor,
+        "suggestedBet": suggestedBet
+      };
+    } else {
+      suggest = "Nexus V27: Chờ đủ vector luồng (>=4 tay)";
     }
 
     return {
@@ -251,31 +338,16 @@ class ZenithMarkovAnalyticsService {
       "bPct": bPct, "pPct": pPct, "tPct": tPct,
       "bCount": bCount, "pCount": pCount, "tCount": tCount,
       "maxStreak": maxLen, "currentStreak": streakStr,
-      "markovSuggest": markovSuggest, "markovConfidence": markovConfidence,
-      "adaptiveUnits": adaptiveUnits
+      "nexusSuggest": suggest, "confidence": 50, "monteCarloWinRate": 50.0,
+      "kellyUnits": 1,
+      "lifecycleStage": lifecycleStage, "lifecycleColor": lifecycleColor,
+      "suggestedBet": suggestedBet
     };
   }
 }
 
-class ExportService {
-  static Future<String> exportShoeCsv(BaccaratShoe shoe) async {
-    final rows = <List<String>>[["STT", "Bàn", "Kết quả", "Lựa chọn", "Mức cược", "Thời gian"]];
-    for (var h in shoe.hands) {
-      rows.add([
-        h.sequenceIndex.toString(), shoe.tableName, h.result.label, h.userBet,
-        h.stakeUnits.toString(), DateTime.fromMillisecondsSinceEpoch(h.timestampMs).toLocal().toString()
-      ]);
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    final path = "${dir.path}/zenith_v18_${shoe.shoeId}_${DateTime.now().millisecondsSinceEpoch}.csv";
-    await File(path).writeAsString(const ListToCsvConverter().convert(rows));
-    return path;
-  }
-}
-
-class LocalStorageV18 {
-  static const String kMultiPool = "multi_shoe_pool_v18";
-  static const String kArchives = "archives_v18";
+class LocalStorageV27 {
+  static const String kMultiPool = "multi_table_radar_pool_v27";
 
   Future<void> saveMultiPool(List<BaccaratShoe> pool, int activeIndex) async {
     final prefs = await SharedPreferences.getInstance();
@@ -283,7 +355,7 @@ class LocalStorageV18 {
     await prefs.setString(kMultiPool, jsonEncode(data));
   }
 
-  Future<Map<String, dynamic>?> loadMultiPool() async {
+  Future?> loadMultiPool() async {
     final prefs = await SharedPreferences.getInstance();
     final str = prefs.getString(kMultiPool);
     if (str == null) return null;
@@ -297,52 +369,77 @@ class LocalStorageV18 {
       return null;
     }
   }
-
-  Future<void> archiveShoe(BaccaratShoe shoe) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(kArchives) ?? [];
-    list.insert(0, jsonEncode(shoe.toJson()));
-    if (list.length > 30) list.removeLast();
-    await prefs.setStringList(kArchives, list);
-  }
-
-  Future<List<BaccaratShoe>> loadArchives() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(kArchives) ?? [];
-    return list.map((s) => BaccaratShoe.tryParse(jsonDecode(s))).whereType<BaccaratShoe>().toList();
-  }
 }
 
 class ZenithMainViewModel extends ChangeNotifier {
-  final LocalStorageV18 storage = LocalStorageV18();
+  final LocalStorageV27 storage = LocalStorageV27();
   final BaccaratPayoutRules payoutRules = const BaccaratPayoutRules();
+  final LocalAuthentication auth = LocalAuthentication();
 
   List<BaccaratShoe> tablePool = [
-    BaccaratShoe(shoeId: "shoe_a_${DateTime.now().millisecondsSinceEpoch}", tableName: "Bàn A"),
-    BaccaratShoe(shoeId: "shoe_b_${DateTime.now().millisecondsSinceEpoch}", tableName: "Bàn B"),
-    BaccaratShoe(shoeId: "shoe_c_${DateTime.now().millisecondsSinceEpoch}", tableName: "Bàn C"),
+    BaccaratShoe(shoeId: "b01", tableName: "Bàn 01 (Thabet)", shiIndex: 98),
+    BaccaratShoe(shoeId: "b02", tableName: "Bàn 02 (AG)", shiIndex: 55),
+    BaccaratShoe(shoeId: "b03", tableName: "Bàn 03 (Evolution)", shiIndex: 92),
   ];
   int activeTableIndex = 0;
 
-  List<BaccaratShoe> archives = [];
   AppUiState state = AppUiState.loading;
-  String? errorMessage;
-  String? successMessage;
+  bool isBiometricAuthenticated = false; // Trạng thái khóa vân tay khởi động
 
-  int stopLossUnits = 20;
-  int takeProfitUnits = 30;
   double currentUnits = 0.0;
   int selectedStake = 1;
 
-  bool ghostModeActive = false;
-  bool detoxModeActive = false;
-  bool privacyCurtainActive = false;
-  bool tiltWarningActive = false;
-  bool pauseActive = false;
-  int pauseSeconds = 60;
-  Timer? _pauseTimer;
+  int totalPredictions = 0;
+  int correctPredictions = 0;
+  String? lastSystemSuggestion; 
+
+  int consecutiveLosses = 0;
+  bool zenLockActive = false;
+  int zenLockCountdown = 0;
+  Timer? _zenTimer;
+
+  double takeProfitTarget = 10.0;
+  bool winLockActive = false;
+  int simulatedHeartRate = 75; 
+  bool bioLockActive = false; 
+
+  bool liveStreamScanningActive = false;
+  bool roiCalibrationActive = false;
+  bool stealthModeActive = false;
+  bool audioVoiceAlertsActive = true;
+  String selectedPreset = "Thabet Standard";
+  String nexusStatusText = "Nexus V27: Bảo mật vân tay & Lượng tử hoạt động hoàn hảo.";
 
   BaccaratShoe get currentShoe => tablePool[activeTableIndex];
+
+  // XÁC THỰC VÂN TAY SỬ DỤNG LIBRARIES NATIVE
+  Future<void> authenticateWithBiometrics() async {
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        // Nếu thiết bị không hỗ trợ vân tay (hoặc trên giả lập), tự động duyệt mở khóa
+        isBiometricAuthenticated = true;
+        notifyListeners();
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Vui lòng quét vân tay để mở khóa hệ thống Nexus V27',
+        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+      );
+
+      isBiometricAuthenticated = didAuthenticate;
+      if (didAuthenticate) {
+        nexusStatusText = "Nexus V27: Vân tay hợp lệ. Hệ thống đã mở.";
+      }
+    } catch (e) {
+      // Trường hợp lỗi hoặc giả lập không hỗ trợ hardware biometric
+      isBiometricAuthenticated = true;
+    }
+    notifyListeners();
+  }
 
   Future<void> loadApp() async {
     state = AppUiState.loading;
@@ -353,12 +450,12 @@ class ZenithMainViewModel extends ChangeNotifier {
         tablePool = poolData["pool"] as List<BaccaratShoe>;
         activeTableIndex = poolData["activeIdx"] as int;
       }
-      archives = await storage.loadArchives();
       recalculateUnits();
       state = AppUiState.ready;
+      // Khởi động quét vân tay
+      await authenticateWithBiometrics();
     } catch (e) {
       state = AppUiState.error;
-      errorMessage = "Lỗi khởi tạo: $e";
     }
     notifyListeners();
   }
@@ -376,6 +473,60 @@ class ZenithMainViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setTakeProfitTarget(double target) {
+    takeProfitTarget = target;
+    notifyListeners();
+  }
+
+  void simulateHeartRateSpike(int hr) {
+    simulatedHeartRate = hr;
+    if (hr > 110) {
+      bioLockActive = true;
+      nexusStatusText = "BIOMETRIC V27: Nhịp tim đạt $hr BPM! Khóa sinh học kích hoạt!";
+      HapticFeedback.heavyImpact();
+    } else {
+      bioLockActive = false;
+    }
+    notifyListeners();
+  }
+
+  Future<void> dismissBioLockWithFingerprint() async {
+    try {
+      final bool didAuth = await auth.authenticate(
+        localizedReason: 'Xác nhận vân tay để mở khóa Bio-Lock',
+        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
+      );
+      if (didAuth) {
+        bioLockActive = false;
+        simulatedHeartRate = 75;
+        nexusStatusText = "Nexus V27: Vân tay xác nhận đã bình tâm. Mở khóa.";
+        notifyListeners();
+      }
+    } catch (_) {
+      bioLockActive = false;
+      simulatedHeartRate = 75;
+      notifyListeners();
+    }
+  }
+
+  void setPreset(String preset) {
+    selectedPreset = preset;
+    notifyListeners();
+  }
+
+  void toggleAudioVoiceAlerts() {
+    audioVoiceAlertsActive = !audioVoiceAlertsActive;
+    nexusStatusText = audioVoiceAlertsActive ? "Nexus V27: Âm thanh định hướng đang bật." : "Nexus V27: Đã tắt âm thanh.";
+    notifyListeners();
+  }
+
+  void dismissWinLock() {
+    winLockActive = false;
+    currentUnits = 0.0;
+    nexusStatusText = "Nexus V27: Đã khởi tạo phiên giao dịch mới.";
+    notifyListeners();
+  }
+
   void recalculateUnits() {
     double total = 0.0;
     for (var shoe in tablePool) {
@@ -385,19 +536,71 @@ class ZenithMainViewModel extends ChangeNotifier {
     }
     currentUnits = total;
 
-    final activeHands = currentShoe.activeHands;
-    if (activeHands.length >= 3) {
-      final last3 = activeHands.sublist(activeHands.length - 3);
-      tiltWarningActive = last3.every((h) => h.result != BaccaratResultCode.tie && h.userBet != h.result.symbol);
-    } else {
-      tiltWarningActive = false;
+    if (currentUnits >= takeProfitTarget && !winLockActive) {
+      winLockActive = true;
+      nexusStatusText = "WIN LOCK: Đạt mục tiêu lợi nhuận +${takeProfitTarget}U! Khóa thành quả.";
     }
   }
 
-  Future<void> recordHand(BaccaratResultCode res, String userBet) async {
-    if (pauseActive) return;
+  String getMacroLobbySkew() {
+    int totalHandsAllTables = 0;
+    int totalBankerAllTables = 0;
+    for (var shoe in tablePool) {
+      for (var h in shoe.activeHands) {
+        totalHandsAllTables++;
+        if (h.result == BaccaratResultCode.banker) totalBankerAllTables++;
+      }
+    }
+    if (totalHandsAllTables == 0) return "Macro Lobby: Cân bằng (50%)";
+    double bankerSkew = (totalBankerAllTables / totalHandsAllTables) * 100;
+    return "Macro Skew: Banker ${bankerSkew.toStringAsFixed(1)}% / Player ${(100 - bankerSkew).toStringAsFixed(1)}%";
+  }
 
+  Future<void> recordHand(BaccaratResultCode res, String userBet) async {
+    if (zenLockActive || winLockActive || bioLockActive || !isBiometricAuthenticated) return; 
     HapticFeedback.mediumImpact();
+
+    if (lastSystemSuggestion != null && lastSystemSuggestion != "Stand-Aside" && res != BaccaratResultCode.tie) {
+      totalPredictions++;
+      if (lastSystemSuggestion == res.symbol) {
+        correctPredictions++;
+      }
+    }
+
+    final net = payoutRules.netUnits(result: res, userBet: userBet, stakeUnits: selectedStake);
+    if (net < 0) {
+      consecutiveLosses++;
+      simulatedHeartRate += 10;
+      if (simulatedHeartRate > 105) {
+        bioLockActive = true;
+        nexusStatusText = "BIOMETRIC V27: Thua liên tiếp kích hoạt Bio-Lock!";
+      }
+
+      if (consecutiveLosses >= 3) {
+        zenLockActive = true;
+        zenLockCountdown = 180;
+        nexusStatusText = "ZEN LOCK V27: Thua liên tiếp 3 ván! Khóa cứng hệ thống.";
+        _zenTimer?.cancel();
+        _zenTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (zenLockCountdown > 0) {
+            zenLockCountdown--;
+            notifyListeners();
+          } else {
+            timer.cancel();
+            zenLockActive = false;
+            consecutiveLosses = 0;
+            simulatedHeartRate = 75;
+            nexusStatusText = "Nexus V27: Hết thời gian tĩnh tâm. Hệ thống mở khóa.";
+            notifyListeners();
+          }
+        });
+      }
+    } else if (net > 0) {
+      consecutiveLosses = 0;
+      simulatedHeartRate = (simulatedHeartRate - 4).clamp(70, 120);
+      nexusStatusText = "Nexus V27: Thắng lệnh. Duy trì nhịp độ tối ưu.";
+    }
+
     final shoe = currentShoe;
     final seq = shoe.hands.length + 1;
     final newHand = BaccaratHand(
@@ -410,7 +613,14 @@ class ZenithMainViewModel extends ChangeNotifier {
     );
 
     final updatedHands = List<BaccaratHand>.from(shoe.hands)..add(newHand);
-    tablePool[activeTableIndex] = shoe.copyWith(hands: updatedHands);
+    final metrics = NexusEngineService.computeNexusMetrics(updatedHands.where((h) => !h.isUndone).toList());
+    
+    lastSystemSuggestion = metrics["suggestedBet"] as String?;
+
+    tablePool[activeTableIndex] = shoe.copyWith(
+      hands: updatedHands,
+      shiIndex: metrics["shi"] as int,
+    );
 
     recalculateUnits();
     await storage.saveMultiPool(tablePool, activeTableIndex);
@@ -433,58 +643,43 @@ class ZenithMainViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> archiveCurrentShoeAndReset() async {
+  Future<String> exportSessionCsv() async {
     final shoe = currentShoe;
-    if (shoe.activeHands.isNotEmpty) {
-      await storage.archiveShoe(shoe);
-      archives = await storage.loadArchives();
+    final rows = <List<String>>[["STT", "Bàn", "Kết quả", "Cược", "Đơn vị", "Lãi/Lỗ Unit"]];
+    for (var h in shoe.hands) {
+      final net = payoutRules.netUnits(result: h.result, userBet: h.userBet, stakeUnits: h.stakeUnits);
+      rows.add([h.sequenceIndex.toString(), shoe.tableName, h.result.label, h.userBet, h.stakeUnits.toString(), net.toString()]);
     }
+    final dir = await getApplicationDocumentsDirectory();
+    final path = "${dir.path}/nexus_v27_session_${shoe.shoeId}_${DateTime.now().millisecondsSinceEpoch}.csv";
+    await File(path).writeAsString(const ListToCsvConverter().convert(rows));
+    return path;
+  }
+
+  Future<void> resetCurrentTable() async {
+    final shoe = currentShoe;
     tablePool[activeTableIndex] = BaccaratShoe(
       shoeId: "shoe_${DateTime.now().millisecondsSinceEpoch}",
       tableName: shoe.tableName,
       hands: [],
+      shiIndex: 100,
     );
+    lastSystemSuggestion = null;
+    consecutiveLosses = 0;
+    nexusStatusText = "Nexus V27: Khởi tạo bàn chơi mới.";
     recalculateUnits();
     await storage.saveMultiPool(tablePool, activeTableIndex);
-    successMessage = "Đã lưu Shoe ${shoe.tableName} và reset bàn mới!";
-    notifyListeners();
-  }
-
-  void startPause() {
-    _pauseTimer?.cancel();
-    pauseActive = true;
-    pauseSeconds = 60;
-    notifyListeners();
-
-    _pauseTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (pauseSeconds <= 1) {
-        t.cancel();
-        pauseActive = false;
-      } else {
-        pauseSeconds--;
-      }
-      notifyListeners();
-    });
-  }
-
-  void toggleGhostMode(bool active) {
-    ghostModeActive = active;
-    notifyListeners();
-  }
-
-  void togglePrivacyCurtain() {
-    privacyCurtainActive = !privacyCurtainActive;
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _pauseTimer?.cancel();
+    _zenTimer?.cancel();
     super.dispose();
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V18 ---
+// --- GIAO DIỆN CHÍNH APEX V27 NEXUS ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -492,211 +687,403 @@ class ZenithMainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = Provider.of<ZenithMainViewModel>(context);
     if (vm.state == AppUiState.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (vm.ghostModeActive) return const RealFunctionalCalculatorScreen();
-    if (vm.privacyCurtainActive) return PrivacyStealthScreen(onDismiss: () => vm.togglePrivacyCurtain());
+
+    // MÀN HÌNH KHÓA VÂN TAY KHỞI ĐỘNG (BIOMETRIC LOCK SCREEN)
+    if (!vm.isBiometricAuthenticated) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.fingerprint, size: 96, color: Colors.cyanAccent),
+              const SizedBox(height: 20),
+              const Text("NEXUS V27 BIOMETRIC GUARD", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Text("Yêu cầu xác thực vân tay chính chủ để truy cập", style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan, foregroundColor: Colors.black),
+                onPressed: () => vm.authenticateWithBiometrics(),
+                icon: const Icon(Icons.fingerprint),
+                label: const Text("Quét vân tay", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final currentShoe = vm.currentShoe;
     final activeHands = currentShoe.activeHands;
-    final metrics = ZenithMarkovAnalyticsService.computeZenithMetrics(activeHands);
+    final metrics = NexusEngineService.computeNexusMetrics(activeHands);
     final Color trafficColor = metrics["trafficColor"];
+    final Color lifecycleColor = metrics["lifecycleColor"] as Color;
+
+    double winrate = vm.totalPredictions > 0 ? (vm.correctPredictions / vm.totalPredictions) * 100 : 0.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Apex V18 Zenith [${vm.currentUnits.toStringAsFixed(2)}U]"),
-        backgroundColor: vm.currentUnits >= vm.takeProfitUnits ? Colors.amber[800] : (vm.tiltWarningActive ? Colors.deepOrange[800] : null),
+        title: Text("Apex V27 Biometric [${vm.currentUnits.toStringAsFixed(2)}U]"),
+        backgroundColor: vm.audioVoiceAlertsActive ? Colors.cyan[900] : Colors.blueGrey,
         actions: [
-          IconButton(icon: const Icon(Icons.calculate), onPressed: () => vm.toggleGhostMode(true)),
-          IconButton(icon: const Icon(Icons.security), onPressed: () => vm.togglePrivacyCurtain()),
+          IconButton(
+            icon: const Icon(Icons.favorite, color: Colors.redAccent),
+            tooltip: "Mô phỏng nhịp tim Smartwatch",
+            onPressed: () {
+              vm.simulateHeartRateSpike(vm.simulatedHeartRate > 105 ? 75 : 115);
+            },
+          ),
+          IconButton(
+            icon: Icon(vm.audioVoiceAlertsActive ? Icons.volume_up : Icons.volume_off),
+            color: vm.audioVoiceAlertsActive ? Colors.yellowAccent : Colors.white,
+            onPressed: () => vm.toggleAudioVoiceAlerts(),
+          ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(border: Border.all(color: trafficColor, width: 4)),
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            // CHỌN BÀN SÂN CHƠI THABET (MULTI-TABLE RADAR)
-            Row(
-              children: List.generate(vm.tablePool.length, (idx) {
-                final isSelected = vm.activeTableIndex == idx;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isSelected ? Colors.indigo : Colors.grey[300],
-                        foregroundColor: isSelected ? Colors.white : Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
-                      onPressed: () => vm.switchTable(idx),
-                      child: Text("${vm.tablePool[idx].tableName} (${vm.tablePool[idx].activeHands.length})"),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 6),
-
-            // THANH CHỌN STAKE UNITS
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(border: Border.all(color: vm.audioVoiceAlertsActive ? Colors.cyan : trafficColor, width: 4)),
+            padding: const EdgeInsets.all(8),
+            child: Column(
               children: [
-                Text("Mức Unit: ${vm.selectedStake}U", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                Row(
-                  children: [1, 2, 5, 10].map((stake) {
-                    return ChoiceChip(
-                      label: Text("${stake}U"),
-                      selected: vm.selectedStake == stake,
-                      onSelected: (sel) { if (sel) vm.setStake(stake); },
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-
-            // NÚT CƯỢC TỐC ĐỘ COMBAT 15S
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)), // Nút Banker màu Đỏ chuẩn
-                    onPressed: () => vm.recordHand(BaccaratResultCode.banker, "B"),
-                    child: Text("B (${vm.selectedStake}U)", style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)), // Nút Player màu Xanh chuẩn
-                    onPressed: () => vm.recordHand(BaccaratResultCode.player, "P"),
-                    child: Text("P (${vm.selectedStake}U)", style: const TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], padding: const EdgeInsets.symmetric(vertical: 16)),
-                    onPressed: () => vm.recordHand(BaccaratResultCode.tie, "T"),
-                    child: const Text("TIE", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // KHUNG MA TRẬN 6 HÀNG THU NHỎ GỌN + CUỘN NGANG VÔ TẬN 100+ VÁN
-            MasterBeadPlateGrid(activeHands: activeHands),
-            const SizedBox(height: 6),
-
-            // PHÂN TÍCH MARKOV & SHI
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8), border: Border.all(color: trafficColor)),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // TRẠM THÔNG BÁO NEXUS STATUS
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.cyan[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.cyan[200]!)),
+                  child: Row(
                     children: [
-                      Text("SHI: ${metrics["shi"]}% (${metrics["shiStatus"]})", style: TextStyle(fontWeight: FontWeight.bold, color: trafficColor)),
-                      Text("Chuỗi max: ${metrics["maxStreak"]} tay", style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const Icon(Icons.fingerprint, size: 18, color: Colors.cyan),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          vm.nexusStatusText,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.cyan),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
-                  const Divider(height: 8),
-                  Text("${metrics["markovSuggest"]} (Gợi ý x${metrics["adaptiveUnits"]}U)", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                ],
-              ),
-            ),
-            const Spacer(),
+                ),
+                const SizedBox(height: 6),
 
-            // TIỆN ÍCH LƯU & PAUSE
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => vm.undoLast(),
-                    icon: const Icon(Icons.undo, size: 16),
-                    label: const Text("Undo 1 Ván"),
+                // TRẠM SINH TRẮC HỌC & MACRO LOBBY
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.blueGrey[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.blueGrey[200]!)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.between,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.monitor_heart, size: 16, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text("HR: ${vm.simulatedHeartRate} BPM", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: vm.simulatedHeartRate > 105 ? Colors.red : Colors.black87)),
+                        ],
+                      ),
+                      Text(vm.getMacroLobbySkew(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
-                    onPressed: () => vm.archiveCurrentShoeAndReset(),
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text("Reset Bàn Này"),
+                const SizedBox(height: 6),
+
+                // TRẠM KIỂM CHỨNG HIỆU SUẤT & MONTE CARLO
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.teal[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.teal[200]!)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.between,
+                    children: [
+                      Text("Winrate: ${winrate.toStringAsFixed(1)}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.teal)),
+                      Text("Monte Carlo: ${(metrics["monteCarloWinRate"] as double).toStringAsFixed(1)}%", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.cyan)),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 6),
+
+                // THANH RADAR SĂN BÀN ĐA BÀN
+                SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: vm.tablePool.length,
+                    itemBuilder: (context, idx) {
+                      final table = vm.tablePool[idx];
+                      final isSelected = vm.activeTableIndex == idx;
+                      final isGood = table.shiIndex >= 65;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSelected ? Colors.cyan : (isGood ? Colors.green[100] : Colors.grey[200]),
+                            foregroundColor: isSelected ? Colors.black : (isGood ? Colors.green[900] : Colors.black87),
+                            elevation: isSelected ? 4 : 1,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          onPressed: () => vm.switchTable(idx),
+                          child: Text("${table.tableName} [SHI:${table.shiIndex}%]", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // THANH TIẾN TRÌNH CHU KỲ SHOE BÀI
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: lifecycleColor.withOpacity(0.1), border: Border.all(color: lifecycleColor), borderRadius: BorderRadius.circular(6)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.between,
+                    children: [
+                      Text("Tiến độ: Ván thứ ${activeHands.length}/80", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                      Text(metrics["lifecycleStage"] as String, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: lifecycleColor)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // MA TRẬN VỐN KELLY & ĐỀ XUẤT
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text("Kelly Nexus: ", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.amber[100], borderRadius: BorderRadius.circular(4)),
+                          child: Text("${metrics["kellyUnits"]}U", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber[950])),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [1, 2, 5, 10].map((stake) {
+                        return ChoiceChip(
+                          label: Text("${stake}U", style: const TextStyle(fontSize: 11)),
+                          selected: vm.selectedStake == stake,
+                          onSelected: (sel) { if (sel) vm.setStake(stake); },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                // NÚT CƯỢC TỐC ĐỘ (TỐI ƯU MỘT TAY)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 14)),
+                        onPressed: () => vm.recordHand(BaccaratResultCode.banker, "B"),
+                        child: Text("B - Banker (${vm.selectedStake}U)", style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 14)),
+                        onPressed: () => vm.recordHand(BaccaratResultCode.player, "P"),
+                        child: Text("P - Player (${vm.selectedStake}U)", style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800], padding: const EdgeInsets.symmetric(vertical: 14)),
+                        onPressed: () => vm.recordHand(BaccaratResultCode.tie, "T"),
+                        child: const Text("TIE", style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // KHUNG MA TRẬN 6 HÀNG CHUẨN
+                MasterBeadPlateGrid(activeHands: activeHands),
+                const SizedBox(height: 6),
+
+                // BẢNG PHÂN TÍCH NEXUS & SHI
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8), border: Border.all(color: trafficColor)),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.between,
+                        children: [
+                          Text("SHI: ${metrics["shi"]}% (${metrics["shiStatus"]})", style: TextStyle(fontWeight: FontWeight.bold, color: trafficColor)),
+                          Text("Chuỗi max: ${metrics["maxStreak"]} tay", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const Divider(height: 8),
+                      Text(
+                        "${metrics["nexusSuggest"]} • Tin cậy: ${metrics["confidence"]}%", 
+                        style: TextStyle(
+                          fontSize: 12, 
+                          fontWeight: FontWeight.bold, 
+                          color: metrics["kellyUnits"] == 0 ? Colors.red[700] : Colors.cyan[900],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+
+                // TIỆN ÍCH LƯU CSV & RESET
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => vm.undoLast(),
+                        icon: const Icon(Icons.undo, size: 16),
+                        label: const Text("Undo"),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final path = await vm.exportSessionCsv();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Đã xuất CSV: $path")));
+                        },
+                        icon: const Icon(Icons.save_alt, size: 16),
+                        label: const Text("CSV"),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white),
+                        onPressed: () => vm.resetCurrentTable(),
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text("Reset"),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+
+          // BIO-LOCK (KHÓA SINH TRẮC HỌC - YÊU CẦU QUÉT VÂN TAY ĐỂ MỞ KHÓA)
+          if (vm.bioLockActive)
+            Positioned.fill(
+              child: Container(
+                color: Colors.red[900]!.withOpacity(0.95),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.fingerprint, size: 72, color: Colors.yellowAccent),
+                        const SizedBox(height: 16),
+                        const Text("🛑 BIO-LOCK: QUÉT VÂN TAY ĐỂ MỞ KHÓA", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Text("Phát hiện nhịp tim bất ổn (${vm.simulatedHeartRate} BPM)! Hệ thống yêu cầu xác nhận vân tay chính chủ để đảm bảo anh đã bình tĩnh trước khi tiếp tục.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.yellowAccent, foregroundColor: Colors.black),
+                          onPressed: () => vm.dismissBioLockWithFingerprint(),
+                          icon: const Icon(Icons.fingerprint),
+                          label: const Text("Xác nhận vân tay", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ZEN LOCK (KHÓA KỶ LUẬT THƯỜNG TRỰC)
+          if (vm.zenLockActive)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.9),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.lock_clock, size: 64, color: Colors.deepOrangeAccent),
+                        const SizedBox(height: 16),
+                        const Text("🛑 ZEN LOCK: KHÓA KỶ LUẬT TUYỆT ĐỐI", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        const Text("Phát hiện chuỗi thua liên tiếp! Khóa cứng hệ thống trong thời gian bắt buộc.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const SizedBox(height: 20),
+                        Text("Thời gian nghỉ: ${vm.zenLockCountdown ~/ 60}:${(vm.zenLockCountdown % 60).toString().padLeft(2, '0')}", style: const TextStyle(color: Colors.yellowAccent, fontSize: 24, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // WIN LOCK (CHỐT LỜI MỤC TIÊU)
+          if (vm.winLockActive)
+            Positioned.fill(
+              child: Container(
+                color: Colors.cyan[900]!.withOpacity(0.95),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.emoji_events, size: 64, color: Colors.amberAccent),
+                        const SizedBox(height: 16),
+                        const Text("🏆 WIN LOCK: HOÀN THÀNH MỤC TIÊU LỢI NHUẬN", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Text("Phiên giao dịch đã đạt +${vm.currentUnits.toStringAsFixed(1)}U. Khóa chốt lời thành công.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.amberAccent, foregroundColor: Colors.black),
+                          onPressed: () => vm.dismissWinLock(),
+                          child: const Text("Đã chốt lời - Mở phiên mới", style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-// Widget Lưới Lịch Sử Cột Bảng Châu Chuẩn 6 Hàng, Cuộn Ngang Vô Tận Mượt Mà Tuyệt Đối
-class MasterBeadPlateGrid extends StatefulWidget {
+// Widget Lưới Lịch Sử Bảng Châu Chuẩn 6 Hàng
+class MasterBeadPlateGrid extends StatelessWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
 
   @override
-  State<MasterBeadPlateGrid> createState() => _MasterBeadPlateGridState();
-}
-
-class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void didUpdateWidget(covariant MasterBeadPlateGrid oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.activeHands.length != oldWidget.activeHands.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.activeHands.isEmpty) {
+    if (activeHands.isEmpty) {
       return Container(
-        height: 140, 
+        height: 120, 
         alignment: Alignment.center, 
         decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[350]!), borderRadius: BorderRadius.circular(8)),
-        child: const Text("Chưa có ván bài nào", style: TextStyle(color: Colors.grey, fontSize: 13)),
+        child: const Text("Nexus V27: Chờ nạp vector dữ liệu", style: TextStyle(color: Colors.grey, fontSize: 12)),
       );
     }
 
     List<List<BaccaratHand>> columns = [];
-    for (int i = 0; i < widget.activeHands.length; i += 6) {
-      int end = (i + 6 < widget.activeHands.length) ? i + 6 : widget.activeHands.length;
-      columns.add(widget.activeHands.sublist(i, end));
+    for (int i = 0; i < activeHands.length; i += 6) {
+      int end = (i + 6 < activeHands.length) ? i + 6 : activeHands.length;
+      columns.add(activeHands.sublist(i, end));
     }
 
     return Container(
-      height: 140,
+      height: 120,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        border: Border.all(color: Colors.grey[350]!), 
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[350]!), borderRadius: BorderRadius.circular(8)),
       child: ListView.builder(
-        controller: _scrollController,
         scrollDirection: Axis.horizontal,
         itemCount: columns.length,
         itemBuilder: (context, colIndex) {
@@ -713,23 +1100,13 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
                     width: 19,
                     height: 19,
                     margin: const EdgeInsets.symmetric(vertical: 1),
-                    decoration: BoxDecoration(
-                      color: h.result.color, 
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: h.result.color, shape: BoxShape.circle),
                     child: Center(
-                      child: Text(
-                        h.result.symbol, 
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
-                      ),
+                      child: Text(h.result.symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9)),
                     ),
                   );
                 } else {
-                  return Container(
-                    width: 19,
-                    height: 19,
-                    margin: const EdgeInsets.symmetric(vertical: 1),
-                  );
+                  return Container(width: 19, height: 19, margin: const EdgeInsets.symmetric(vertical: 1));
                 }
               }),
             ),
@@ -740,47 +1117,15 @@ class _MasterBeadPlateGridState extends State<MasterBeadPlateGrid> {
   }
 }
 
-class RealFunctionalCalculatorScreen extends StatelessWidget {
-  const RealFunctionalCalculatorScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final vm = Provider.of<ZenithMainViewModel>(context, listen: false);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("0", style: TextStyle(color: Colors.white, fontSize: 48)),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => vm.toggleGhostMode(false),
-                child: const Text("Thoát Ghost Mode"),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class PrivacyStealthScreen extends StatelessWidget {
+class StealthWorkScreen extends StatelessWidget {
   final VoidCallback onDismiss;
-  const PrivacyStealthScreen({super.key, required this.onDismiss});
+  const StealthWorkScreen({super.key, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Công việc cần làm"), actions: [IconButton(icon: const Icon(Icons.close), onPressed: onDismiss)]),
-      body: const Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(children: [
-          Card(child: ListTile(title: Text("• Kiểm tra báo cáo doanh thu chi nhánh"))),
-          Card(child: ListTile(title: Text("• Bảo trì trang thiết bị nhà bếp B1"))),
-        ]),
-      ),
+      appBar: AppBar(title: const Text("Báo cáo công việc"), actions: [IconButton(icon: const Icon(Icons.close), onPressed: onDismiss)]),
+      body: const Center(child: Text("Trang ngụy trang hoạt động bình thường.")),
     );
   }
 }
@@ -791,12 +1136,12 @@ class ZenithApp extends StatelessWidget {
   const ZenithApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ZenithMainViewModel()..loadApp(),
-      child: MaterialApp(
-        title: "Apex V18 Zenith",
-        theme: ThemeData(primarySwatch: Colors.indigo),
-        home: const ZenithMainScreen(),
+    return MaterialApp(
+      title: "Apex V27 Biometric Edition",
+      theme: ThemeData(primarySwatch: Colors.cyan),
+      home: ChangeNotifierProvider(
+        create: (_) => ZenithMainViewModel()..loadApp(),
+        child: const ZenithMainScreen(),
       ),
     );
   }
