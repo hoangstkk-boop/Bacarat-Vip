@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -147,7 +146,6 @@ class BaccaratShoe {
   }
 }
 
-// --- ĐỘNG CƠ NEXUS V27: MONTE CARLO & QUANTUM STOCHASTIC ENGINE ---
 class NexusEngineService {
   static Map<String, dynamic> computeNexusMetrics(List<BaccaratHand> activeHands) {
     final windowed = activeHands.length > 100 ? activeHands.sublist(activeHands.length - 100) : activeHands;
@@ -165,11 +163,11 @@ class NexusEngineService {
 
     if (total < 3) {
       return {
-        "total": total, "shi": 100, "shiStatus": "Nexus Biometric Ready", "trafficColor": Colors.cyan,
+        "total": total, "shi": 100, "shiStatus": "Nexus Ready", "trafficColor": Colors.cyan,
         "bPct": 0.0, "pPct": 0.0, "tPct": 0.0,
         "bCount": 0, "pCount": 0, "tCount": 0,
         "maxStreak": 0, "currentStreak": "Chưa có",
-        "nexusSuggest": "Nexus V27: Nạp ma trận sinh trắc (>=3 tay)", "confidence": 50, "monteCarloWinRate": 50.0,
+        "nexusSuggest": "Nexus V26.1: Nạp ma trận lượng tử (>=3 tay)", "confidence": 50, "monteCarloWinRate": 50.0,
         "kellyUnits": 1, "lifecycleStage": lifecycleStage, "lifecycleColor": lifecycleColor, "suggestedBet": "Stand-Aside"
       };
     }
@@ -237,7 +235,7 @@ class NexusEngineService {
     
     double scoreB = 50.0;
     int confidence = 50;
-    String suggest = "Nexus V27: Thị trường nhiễu - Đứng ngoài";
+    String suggest = "Nexus V26.1: Thị trường nhiễu - Đứng ngoài";
     String suggestedBet = "Stand-Aside";
     int kellyUnits = 0;
 
@@ -302,16 +300,16 @@ class NexusEngineService {
       double kellyFraction = (pWin * (odds + 1) - 1) / odds;
 
       if ((scoreB >= 45 && scoreB <= 55) || shi < 40 || total > 65 || kellyFraction <= 0) {
-        suggest = "Nexus V27: Trường lực nhiễu - Đứng ngoài quan sát";
+        suggest = "Nexus V26.1: Trường lực nhiễu - Đứng ngoài quan sát";
         suggestedBet = "Stand-Aside";
         confidence = 50;
         kellyUnits = 0;
       } else if (targetIsBanker) {
-        suggest = "Nexus V27: Khuyến nghị lượng tử Banker";
+        suggest = "Nexus V26.1: Khuyến nghị lượng tử Banker";
         suggestedBet = "B";
         kellyUnits = (kellyFraction > 0.15 && shi >= 70) ? 3 : (kellyFraction > 0.08 ? 2 : 1);
       } else {
-        suggest = "Nexus V27: Khuyến nghị lượng tử Player";
+        suggest = "Nexus V26.1: Khuyến nghị lượng tử Player";
         suggestedBet = "P";
         kellyUnits = (kellyFraction > 0.15 && shi >= 70) ? 3 : (kellyFraction > 0.08 ? 2 : 1);
       }
@@ -329,7 +327,7 @@ class NexusEngineService {
         "suggestedBet": suggestedBet
       };
     } else {
-      suggest = "Nexus V27: Chờ đủ vector luồng (>=4 tay)";
+      suggest = "Nexus V26.1: Chờ đủ vector luồng (>=4 tay)";
     }
 
     return {
@@ -346,8 +344,8 @@ class NexusEngineService {
   }
 }
 
-class LocalStorageV27 {
-  static const String kMultiPool = "multi_table_radar_pool_v27";
+class LocalStorageV26 {
+  static const String kMultiPool = "multi_table_radar_pool_v26_1";
 
   Future<void> saveMultiPool(List<BaccaratShoe> pool, int activeIndex) async {
     final prefs = await SharedPreferences.getInstance();
@@ -372,9 +370,8 @@ class LocalStorageV27 {
 }
 
 class ZenithMainViewModel extends ChangeNotifier {
-  final LocalStorageV27 storage = LocalStorageV27();
+  final LocalStorageV26 storage = LocalStorageV26();
   final BaccaratPayoutRules payoutRules = const BaccaratPayoutRules();
-  final LocalAuthentication auth = LocalAuthentication();
 
   List<BaccaratShoe> tablePool = [
     BaccaratShoe(shoeId: "b01", tableName: "Bàn 01 (Thabet)", shiIndex: 98),
@@ -384,8 +381,6 @@ class ZenithMainViewModel extends ChangeNotifier {
   int activeTableIndex = 0;
 
   AppUiState state = AppUiState.loading;
-  bool isBiometricAuthenticated = false; // Trạng thái khóa vân tay khởi động
-
   double currentUnits = 0.0;
   int selectedStake = 1;
 
@@ -408,38 +403,9 @@ class ZenithMainViewModel extends ChangeNotifier {
   bool stealthModeActive = false;
   bool audioVoiceAlertsActive = true;
   String selectedPreset = "Thabet Standard";
-  String nexusStatusText = "Nexus V27: Bảo mật vân tay & Lượng tử hoạt động hoàn hảo.";
+  String nexusStatusText = "Nexus V26.1: Hệ thống lượng tử hoạt động ổn định.";
 
   BaccaratShoe get currentShoe => tablePool[activeTableIndex];
-
-  // XÁC THỰC VÂN TAY SỬ DỤNG LIBRARIES NATIVE
-  Future<void> authenticateWithBiometrics() async {
-    try {
-      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
-
-      if (!canAuthenticate) {
-        // Nếu thiết bị không hỗ trợ vân tay (hoặc trên giả lập), tự động duyệt mở khóa
-        isBiometricAuthenticated = true;
-        notifyListeners();
-        return;
-      }
-
-      final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Vui lòng quét vân tay để mở khóa hệ thống Nexus V27',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
-      );
-
-      isBiometricAuthenticated = didAuthenticate;
-      if (didAuthenticate) {
-        nexusStatusText = "Nexus V27: Vân tay hợp lệ. Hệ thống đã mở.";
-      }
-    } catch (e) {
-      // Trường hợp lỗi hoặc giả lập không hỗ trợ hardware biometric
-      isBiometricAuthenticated = true;
-    }
-    notifyListeners();
-  }
 
   Future<void> loadApp() async {
     state = AppUiState.loading;
@@ -452,8 +418,6 @@ class ZenithMainViewModel extends ChangeNotifier {
       }
       recalculateUnits();
       state = AppUiState.ready;
-      // Khởi động quét vân tay
-      await authenticateWithBiometrics();
     } catch (e) {
       state = AppUiState.error;
     }
@@ -482,7 +446,7 @@ class ZenithMainViewModel extends ChangeNotifier {
     simulatedHeartRate = hr;
     if (hr > 110) {
       bioLockActive = true;
-      nexusStatusText = "BIOMETRIC V27: Nhịp tim đạt $hr BPM! Khóa sinh học kích hoạt!";
+      nexusStatusText = "BIOMETRIC V26.1: Nhịp tim đạt $hr BPM! Khóa sinh học kích hoạt!";
       HapticFeedback.heavyImpact();
     } else {
       bioLockActive = false;
@@ -490,23 +454,11 @@ class ZenithMainViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> dismissBioLockWithFingerprint() async {
-    try {
-      final bool didAuth = await auth.authenticate(
-        localizedReason: 'Xác nhận vân tay để mở khóa Bio-Lock',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
-      );
-      if (didAuth) {
-        bioLockActive = false;
-        simulatedHeartRate = 75;
-        nexusStatusText = "Nexus V27: Vân tay xác nhận đã bình tâm. Mở khóa.";
-        notifyListeners();
-      }
-    } catch (_) {
-      bioLockActive = false;
-      simulatedHeartRate = 75;
-      notifyListeners();
-    }
+  void dismissBioLock() {
+    bioLockActive = false;
+    simulatedHeartRate = 75;
+    nexusStatusText = "Nexus V26.1: Trạng thái sinh học đã hồi phục. Mở khóa.";
+    notifyListeners();
   }
 
   void setPreset(String preset) {
@@ -516,14 +468,14 @@ class ZenithMainViewModel extends ChangeNotifier {
 
   void toggleAudioVoiceAlerts() {
     audioVoiceAlertsActive = !audioVoiceAlertsActive;
-    nexusStatusText = audioVoiceAlertsActive ? "Nexus V27: Âm thanh định hướng đang bật." : "Nexus V27: Đã tắt âm thanh.";
+    nexusStatusText = audioVoiceAlertsActive ? "Nexus V26.1: Âm thanh định hướng đang bật." : "Nexus V26.1: Đã tắt âm thanh.";
     notifyListeners();
   }
 
   void dismissWinLock() {
     winLockActive = false;
     currentUnits = 0.0;
-    nexusStatusText = "Nexus V27: Đã khởi tạo phiên giao dịch mới.";
+    nexusStatusText = "Nexus V26.1: Đã khởi tạo phiên giao dịch mới.";
     notifyListeners();
   }
 
@@ -557,7 +509,7 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 
   Future<void> recordHand(BaccaratResultCode res, String userBet) async {
-    if (zenLockActive || winLockActive || bioLockActive || !isBiometricAuthenticated) return; 
+    if (zenLockActive || winLockActive || bioLockActive) return; 
     HapticFeedback.mediumImpact();
 
     if (lastSystemSuggestion != null && lastSystemSuggestion != "Stand-Aside" && res != BaccaratResultCode.tie) {
@@ -573,13 +525,13 @@ class ZenithMainViewModel extends ChangeNotifier {
       simulatedHeartRate += 10;
       if (simulatedHeartRate > 105) {
         bioLockActive = true;
-        nexusStatusText = "BIOMETRIC V27: Thua liên tiếp kích hoạt Bio-Lock!";
+        nexusStatusText = "BIOMETRIC V26.1: Thua liên tiếp kích hoạt Bio-Lock!";
       }
 
       if (consecutiveLosses >= 3) {
         zenLockActive = true;
         zenLockCountdown = 180;
-        nexusStatusText = "ZEN LOCK V27: Thua liên tiếp 3 ván! Khóa cứng hệ thống.";
+        nexusStatusText = "ZEN LOCK V26.1: Thua liên tiếp 3 ván! Khóa cứng hệ thống.";
         _zenTimer?.cancel();
         _zenTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
           if (zenLockCountdown > 0) {
@@ -590,7 +542,7 @@ class ZenithMainViewModel extends ChangeNotifier {
             zenLockActive = false;
             consecutiveLosses = 0;
             simulatedHeartRate = 75;
-            nexusStatusText = "Nexus V27: Hết thời gian tĩnh tâm. Hệ thống mở khóa.";
+            nexusStatusText = "Nexus V26.1: Hết thời gian tĩnh tâm. Hệ thống mở khóa.";
             notifyListeners();
           }
         });
@@ -598,7 +550,7 @@ class ZenithMainViewModel extends ChangeNotifier {
     } else if (net > 0) {
       consecutiveLosses = 0;
       simulatedHeartRate = (simulatedHeartRate - 4).clamp(70, 120);
-      nexusStatusText = "Nexus V27: Thắng lệnh. Duy trì nhịp độ tối ưu.";
+      nexusStatusText = "Nexus V26.1: Thắng lệnh. Duy trì nhịp độ tối ưu.";
     }
 
     final shoe = currentShoe;
@@ -651,7 +603,7 @@ class ZenithMainViewModel extends ChangeNotifier {
       rows.add([h.sequenceIndex.toString(), shoe.tableName, h.result.label, h.userBet, h.stakeUnits.toString(), net.toString()]);
     }
     final dir = await getApplicationDocumentsDirectory();
-    final path = "${dir.path}/nexus_v27_session_${shoe.shoeId}_${DateTime.now().millisecondsSinceEpoch}.csv";
+    final path = "${dir.path}/nexus_v26_1_session_${shoe.shoeId}_${DateTime.now().millisecondsSinceEpoch}.csv";
     await File(path).writeAsString(const ListToCsvConverter().convert(rows));
     return path;
   }
@@ -666,7 +618,7 @@ class ZenithMainViewModel extends ChangeNotifier {
     );
     lastSystemSuggestion = null;
     consecutiveLosses = 0;
-    nexusStatusText = "Nexus V27: Khởi tạo bàn chơi mới.";
+    nexusStatusText = "Nexus V26.1: Khởi tạo bàn chơi mới.";
     recalculateUnits();
     await storage.saveMultiPool(tablePool, activeTableIndex);
     notifyListeners();
@@ -679,7 +631,7 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V27 NEXUS ---
+// --- GIAO DIỆN CHÍNH APEX V26.1 ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -687,32 +639,6 @@ class ZenithMainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = Provider.of<ZenithMainViewModel>(context);
     if (vm.state == AppUiState.loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-
-    // MÀN HÌNH KHÓA VÂN TAY KHỞI ĐỘNG (BIOMETRIC LOCK SCREEN)
-    if (!vm.isBiometricAuthenticated) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.fingerprint, size: 96, color: Colors.cyanAccent),
-              const SizedBox(height: 20),
-              const Text("NEXUS V27 BIOMETRIC GUARD", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              const Text("Yêu cầu xác thực vân tay chính chủ để truy cập", style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan, foregroundColor: Colors.black),
-                onPressed: () => vm.authenticateWithBiometrics(),
-                icon: const Icon(Icons.fingerprint),
-                label: const Text("Quét vân tay", style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     final currentShoe = vm.currentShoe;
     final activeHands = currentShoe.activeHands;
@@ -724,7 +650,7 @@ class ZenithMainScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Apex V27 Biometric [${vm.currentUnits.toStringAsFixed(2)}U]"),
+        title: Text("Apex V26.1 Nexus [${vm.currentUnits.toStringAsFixed(2)}U]"),
         backgroundColor: vm.audioVoiceAlertsActive ? Colors.cyan[900] : Colors.blueGrey,
         actions: [
           IconButton(
@@ -748,13 +674,12 @@ class ZenithMainScreen extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             child: Column(
               children: [
-                // TRẠM THÔNG BÁO NEXUS STATUS
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(color: Colors.cyan[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.cyan[200]!)),
                   child: Row(
                     children: [
-                      const Icon(Icons.fingerprint, size: 18, color: Colors.cyan),
+                      const Icon(Icons.bolt, size: 18, color: Colors.cyan),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -767,8 +692,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // TRẠM SINH TRẮC HỌC & MACRO LOBBY
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(color: Colors.blueGrey[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.blueGrey[200]!)),
@@ -787,8 +710,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // TRẠM KIỂM CHỨNG HIỆU SUẤT & MONTE CARLO
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(color: Colors.teal[50], borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.teal[200]!)),
@@ -801,8 +722,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // THANH RADAR SĂN BÀN ĐA BÀN
                 SizedBox(
                   height: 40,
                   child: ListView.builder(
@@ -829,8 +748,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // THANH TIẾN TRÌNH CHU KỲ SHOE BÀI
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(color: lifecycleColor.withOpacity(0.1), border: Border.all(color: lifecycleColor), borderRadius: BorderRadius.circular(6)),
@@ -843,8 +760,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-
-                // MA TRẬN VỐN KELLY & ĐỀ XUẤT
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -870,8 +785,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-
-                // NÚT CƯỢC TỐC ĐỘ (TỐI ƯU MỘT TAY)
                 Row(
                   children: [
                     Expanded(
@@ -900,19 +813,15 @@ class ZenithMainScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-
-                // KHUNG MA TRẬN 6 HÀNG CHUẨN
                 MasterBeadPlateGrid(activeHands: activeHands),
                 const SizedBox(height: 6),
-
-                // BẢNG PHÂN TÍCH NEXUS & SHI
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8), border: Border.all(color: trafficColor)),
                   child: Column(
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.between,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text("SHI: ${metrics["shi"]}% (${metrics["shiStatus"]})", style: TextStyle(fontWeight: FontWeight.bold, color: trafficColor)),
                           Text("Chuỗi max: ${metrics["maxStreak"]} tay", style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -931,8 +840,6 @@ class ZenithMainScreen extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-
-                // TIỆN ÍCH LƯU CSV & RESET
                 Row(
                   children: [
                     Expanded(
@@ -967,8 +874,6 @@ class ZenithMainScreen extends StatelessWidget {
               ],
             ),
           ),
-
-          // BIO-LOCK (KHÓA SINH TRẮC HỌC - YÊU CẦU QUÉT VÂN TAY ĐỂ MỞ KHÓA)
           if (vm.bioLockActive)
             Positioned.fill(
               child: Container(
@@ -979,17 +884,16 @@ class ZenithMainScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.fingerprint, size: 72, color: Colors.yellowAccent),
+                        const Icon(Icons.heart_broken, size: 64, color: Colors.yellowAccent),
                         const SizedBox(height: 16),
-                        const Text("🛑 BIO-LOCK: QUÉT VÂN TAY ĐỂ MỞ KHÓA", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text("🛑 BIO-LOCK: CẢNH BÁO TÂM LÝ & NHỊP TIM", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 10),
-                        Text("Phát hiện nhịp tim bất ổn (${vm.simulatedHeartRate} BPM)! Hệ thống yêu cầu xác nhận vân tay chính chủ để đảm bảo anh đã bình tĩnh trước khi tiếp tục.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        Text("Phát hiện nhịp sinh học bất ổn (${vm.simulatedHeartRate} BPM)! Hệ thống cưỡng chế khóa thao tác để bảo vệ vốn.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13)),
                         const SizedBox(height: 24),
-                        ElevatedButton.icon(
+                        ElevatedButton(
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.yellowAccent, foregroundColor: Colors.black),
-                          onPressed: () => vm.dismissBioLockWithFingerprint(),
-                          icon: const Icon(Icons.fingerprint),
-                          label: const Text("Xác nhận vân tay", style: TextStyle(fontWeight: FontWeight.bold)),
+                          onPressed: () => vm.dismissBioLock(),
+                          child: const Text("Tôi đã bình tâm - Mở khóa", style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -997,8 +901,6 @@ class ZenithMainScreen extends StatelessWidget {
                 ),
               ),
             ),
-
-          // ZEN LOCK (KHÓA KỶ LUẬT THƯỜNG TRỰC)
           if (vm.zenLockActive)
             Positioned.fill(
               child: Container(
@@ -1022,8 +924,6 @@ class ZenithMainScreen extends StatelessWidget {
                 ),
               ),
             ),
-
-          // WIN LOCK (CHỐT LỜI MỤC TIÊU)
           if (vm.winLockActive)
             Positioned.fill(
               child: Container(
@@ -1057,7 +957,6 @@ class ZenithMainScreen extends StatelessWidget {
   }
 }
 
-// Widget Lưới Lịch Sử Bảng Châu Chuẩn 6 Hàng
 class MasterBeadPlateGrid extends StatelessWidget {
   final List<BaccaratHand> activeHands;
   const MasterBeadPlateGrid({super.key, required this.activeHands});
@@ -1069,7 +968,7 @@ class MasterBeadPlateGrid extends StatelessWidget {
         height: 120, 
         alignment: Alignment.center, 
         decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey[350]!), borderRadius: BorderRadius.circular(8)),
-        child: const Text("Nexus V27: Chờ nạp vector dữ liệu", style: TextStyle(color: Colors.grey, fontSize: 12)),
+        child: const Text("Nexus V26.1: Chờ nạp vector dữ liệu", style: TextStyle(color: Colors.grey, fontSize: 12)),
       );
     }
 
@@ -1092,7 +991,7 @@ class MasterBeadPlateGrid extends StatelessWidget {
             width: 22,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainSpaceEvenly,
               children: List.generate(6, (rowIndex) {
                 if (rowIndex < colHands.length) {
                   final h = colHands[rowIndex];
@@ -1117,19 +1016,6 @@ class MasterBeadPlateGrid extends StatelessWidget {
   }
 }
 
-class StealthWorkScreen extends StatelessWidget {
-  final VoidCallback onDismiss;
-  const StealthWorkScreen({super.key, required this.onDismiss});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Báo cáo công việc"), actions: [IconButton(icon: const Icon(Icons.close), onPressed: onDismiss)]),
-      body: const Center(child: Text("Trang ngụy trang hoạt động bình thường.")),
-    );
-  }
-}
-
 void main() => runApp(const ZenithApp());
 
 class ZenithApp extends StatelessWidget {
@@ -1137,7 +1023,7 @@ class ZenithApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Apex V27 Biometric Edition",
+      title: "Apex V26.1 Nexus Edition",
       theme: ThemeData(primarySwatch: Colors.cyan),
       home: ChangeNotifierProvider(
         create: (_) => ZenithMainViewModel()..loadApp(),
