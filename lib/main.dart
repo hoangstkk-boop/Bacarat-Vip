@@ -1000,7 +1000,7 @@ class MasterBeadPlateGrid extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(vertical: 1),
                     decoration: BoxDecoration(color: h.result.color, shape: BoxShape.circle),
                     child: Center(
-                      child: Text(h.result.symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9)),
+                      child: Text(h.result.symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 19)),
                     ),
                   );
                 } else {
