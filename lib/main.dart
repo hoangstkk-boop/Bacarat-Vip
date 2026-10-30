@@ -991,7 +991,7 @@ class MasterBeadPlateGrid extends StatelessWidget {
             width: 22,
             margin: const EdgeInsets.symmetric(horizontal: 1),
             child: Column(
-              mainAxisAlignment: MainSpaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(6, (rowIndex) {
                 if (rowIndex < colHands.length) {
                   final h = colHands[rowIndex];
