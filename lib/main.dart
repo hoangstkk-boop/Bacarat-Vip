@@ -631,7 +631,6 @@ class ZenithMainViewModel extends ChangeNotifier {
   }
 }
 
-// --- GIAO DIỆN CHÍNH APEX V26.1 ---
 class ZenithMainScreen extends StatelessWidget {
   const ZenithMainScreen({super.key});
 
@@ -1022,8 +1021,9 @@ class ZenithApp extends StatelessWidget {
   const ZenithApp({super.key});
   @override
   Widget build(BuildContext context) {
+    const title = "Apex V26.1 Nexus Edition";
     return MaterialApp(
-      title: "Apex V26.1 Nexus Edition",
+      title: title,
       theme: ThemeData(primarySwatch: Colors.cyan),
       home: ChangeNotifierProvider(
         create: (_) => ZenithMainViewModel()..loadApp(),
