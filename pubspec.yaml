@@ -1,49 +1,24 @@
-name: Build Flutter APK
+name: baccarat_app
+description: "Apex V26.1 Nexus Ultimate Edition"
+publish_to: 'none'
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+version: 1.0.0+1
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+environment:
+  sdk: '>=3.0.0 <4.0.0'
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  path_provider: ^2.1.2
+  csv: ^6.0.0
 
-      - name: Set up Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
 
-      - name: Set up Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.19.6'
-          channel: 'stable'
-
-      - name: Get Flutter dependencies
-        run: flutter pub get
-
-      - name: Auto-fix Android Namespace for AGP 8+
-        run: |
-          GRADLE_FILE="android/app/build.gradle"
-          if [ -f "$GRADLE_FILE" ]; then
-            if ! grep -q "namespace" "$GRADLE_FILE"; then
-              echo "Injecting namespace into build.gradle..."
-              sed -i 's/android {/android {\n    namespace "com.baccarat.nexus"/g' "$GRADLE_FILE"
-            fi
-          fi
-
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+flutter:
+  uses-material-design: true
