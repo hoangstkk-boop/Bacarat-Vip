@@ -26,8 +26,12 @@ jobs:
           flutter-version: '3.19.6'
           channel: 'stable'
 
+      - name: Force Generate Android Scaffold
+        run: |
+          flutter create . --platforms=android --org com.apex.nexus --force
+
       - name: Get Flutter dependencies
-        run: flutter pub get --no-example
+        run: flutter pub get
 
       - name: Build Android APK
         run: flutter build apk --release
